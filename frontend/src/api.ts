@@ -1,4 +1,6 @@
-const BASE = "http://localhost:8000/api";
+// In Docker the frontend nginx proxies /api → backend container.
+// Locally the backend runs on :8000 directly.
+const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "http://localhost:8000/api";
 
 async function get<T>(path: string, params?: Record<string, string | number>): Promise<T> {
   const url = new URL(`${BASE}${path}`);
