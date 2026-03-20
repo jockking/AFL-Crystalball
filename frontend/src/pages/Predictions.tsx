@@ -42,18 +42,40 @@ function ScoreBadge({ p }: { p: Prediction }) {
   );
 }
 
-function EliteBadge({ p }: { p: Prediction }) {
-  if (p.elite_confidence == null || p.elite_winner == null) return null;
-  const agrees = p.elite_agrees !== false;
+function BetPanel({ p }: { p: Prediction }) {
+  const conf = p.confidence;
+  const isStrong = conf >= 75;
+  const isModerate = conf >= 60;
+  const tierLabel = isStrong ? "Strong tip" : isModerate ? "Moderate" : "Tight game";
+  const containerCls = isStrong
+    ? "bg-green-900/40 border-green-600/60 text-green-200"
+    : isModerate
+    ? "bg-amber-900/30 border-amber-600/50 text-amber-200"
+    : "bg-slate-800/60 border-slate-600/50 text-slate-300";
+  const labelCls = isStrong ? "text-green-400" : isModerate ? "text-amber-400" : "text-slate-500";
+  const teamCls = isStrong ? "text-green-100" : isModerate ? "text-amber-100" : "text-slate-200";
+  const eliteSplit = p.elite_winner != null && p.elite_winner !== p.predicted_winner;
+
   return (
-    <div className={`flex items-center gap-1.5 text-xs rounded px-2 py-0.5 border ${
-      agrees
-        ? "bg-amber-950/30 border-amber-800/50 text-amber-300"
-        : "bg-red-950/30 border-red-800/50 text-red-300"
-    }`}>
-      <span className="text-amber-400">★</span>
-      Elite: {p.elite_winner} ({p.elite_confidence.toFixed(0)}%)
-      {!agrees && <span className="text-red-400 ml-1">⚠ split</span>}
+    <div className={`flex items-center justify-between rounded-lg border px-3 py-2 ${containerCls}`}>
+      <div>
+        <div className={`text-xs font-semibold uppercase tracking-wider mb-0.5 ${labelCls}`}>
+          {tierLabel}
+        </div>
+        <div className={`text-base font-bold ${teamCls}`}>{p.predicted_winner}</div>
+      </div>
+      <div className="text-right">
+        <div className={`text-2xl font-bold tabular-nums ${labelCls}`}>{conf.toFixed(0)}%</div>
+        <div className="text-xs text-slate-500">
+          {Math.abs(p.avg_margin).toFixed(1)} pts · {p.model_count}m
+        </div>
+        {p.elite_winner && !eliteSplit && (
+          <div className="text-xs text-amber-400 mt-0.5">★ Elite agree</div>
+        )}
+        {eliteSplit && (
+          <div className="text-xs text-orange-400 mt-0.5">⚠ Elite: {p.elite_winner}</div>
+        )}
+      </div>
     </div>
   );
 }
@@ -230,103 +252,99 @@ export default function Predictions() {
 
           {/* Game cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {predictions.map((p) => (
-              <Card
-                key={p.game_id}
-                className={
-                  p.is_complete
-                    ? p.tip_correct
-                      ? "border-green-800/50"
-                      : "border-red-800/50"
-                    : ""
-                }
-              >
-                {/* Header row */}
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <p className="text-xs text-slate-500">{p.date ? p.date.slice(0, 10) : "TBA"}</p>
-                    <p className="text-xs text-slate-500">{p.venue ?? ""}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {p.is_close && !p.is_complete && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-400">Tight</span>
-                    )}
+            {predictions.map((p) => {
+              const upcomingBorderCls = !p.is_complete
+                ? p.confidence >= 75
+                  ? "border-green-800/40"
+                  : p.confidence >= 60
+                  ? "border-amber-800/40"
+                  : ""
+                : p.tip_correct
+                ? "border-green-800/50"
+                : "border-red-800/50";
+
+              return (
+                <Card key={p.game_id} className={upcomingBorderCls}>
+                  {/* Header: date / venue / status */}
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="text-xs text-slate-500">{p.date ? p.date.slice(0, 10) : "TBA"}</p>
+                      <p className="text-xs text-slate-600">{p.venue ?? ""}</p>
+                    </div>
                     <ResultBadge p={p} />
                   </div>
-                </div>
 
-                {/* Teams + scores */}
-                <div className="flex justify-between items-center mb-3">
-                  <span className={`font-semibold ${p.actual_winner === p.home_team ? "text-slate-100" : p.is_complete ? "text-slate-500" : "text-slate-100"}`}>
-                    {p.home_team}
-                  </span>
                   {p.is_complete ? (
-                    <ScoreBadge p={p} />
+                    /* ── Past game ── */
+                    <>
+                      {/* Teams + score */}
+                      <div className="flex justify-between items-center mb-3">
+                        <span className={`font-semibold ${p.actual_winner === p.home_team ? "text-slate-100" : "text-slate-500"}`}>
+                          {p.home_team}
+                        </span>
+                        <ScoreBadge p={p} />
+                        <span className={`font-semibold text-right ${p.actual_winner === p.away_team ? "text-slate-100" : "text-slate-500"}`}>
+                          {p.away_team}
+                        </span>
+                      </div>
+
+                      <ConfidenceBar homePct={p.home_vote_pct} homeTeam={p.home_team} awayTeam={p.away_team} />
+
+                      {/* Tipped vs actual */}
+                      <div className="mt-3 pt-3 border-t border-slate-800 flex justify-between text-xs text-slate-500">
+                        <span>
+                          Tipped:{" "}
+                          <span className={`font-semibold ${p.tip_correct ? "text-green-400" : "text-red-400"}`}>
+                            {p.predicted_winner}
+                          </span>
+                        </span>
+                        {!p.tip_correct && p.actual_winner && (
+                          <span>Won: <span className="text-slate-300 font-semibold">{p.actual_winner}</span></span>
+                        )}
+                        <span>
+                          Margin: <span className="font-mono text-slate-300">{Math.abs(p.avg_margin).toFixed(1)} pts</span>
+                        </span>
+                      </div>
+                    </>
                   ) : (
-                    <span className="text-slate-600 text-xs">vs</span>
+                    /* ── Upcoming game ── */
+                    <>
+                      {/* Teams */}
+                      <div className="flex justify-between items-center text-sm mb-2">
+                        <span className="text-slate-300 font-medium">{p.home_team}</span>
+                        <span className="text-slate-600 text-xs">vs</span>
+                        <span className="text-slate-300 font-medium">{p.away_team}</span>
+                      </div>
+
+                      {/* Prominent bet recommendation */}
+                      <BetPanel p={p} />
+
+                      <div className="mt-3">
+                        <ConfidenceBar homePct={p.home_vote_pct} homeTeam={p.home_team} awayTeam={p.away_team} />
+                      </div>
+                    </>
                   )}
-                  <span className={`font-semibold text-right ${p.actual_winner === p.away_team ? "text-slate-100" : p.is_complete ? "text-slate-500" : "text-slate-100"}`}>
-                    {p.away_team}
-                  </span>
-                </div>
 
-                {/* Confidence bar */}
-                <ConfidenceBar
-                  homePct={p.home_vote_pct}
-                  homeTeam={p.home_team}
-                  awayTeam={p.away_team}
-                />
-
-                {/* Footer */}
-                <div className="mt-3 pt-3 border-t border-slate-800 flex justify-between text-xs text-slate-500">
-                  <span>
-                    Tipped:{" "}
-                    <span className={`font-semibold ${
-                      p.is_complete
-                        ? p.tip_correct ? "text-green-400" : "text-red-400"
-                        : "text-amber-400"
-                    }`}>
-                      {p.predicted_winner}
-                    </span>
-                  </span>
-                  {p.is_complete && p.actual_winner && p.actual_winner !== p.predicted_winner && (
-                    <span>
-                      Won: <span className="text-slate-300 font-semibold">{p.actual_winner}</span>
-                    </span>
+                  {/* Model breakdown toggle */}
+                  {p.model_votes.length > 0 && (
+                    <button
+                      onClick={() => setExpandedGame(expandedGame === p.game_id ? null : p.game_id)}
+                      className="mt-3 w-full flex items-center justify-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                    >
+                      {expandedGame === p.game_id ? (
+                        <><ChevronUp size={12} /> Hide model breakdown</>
+                      ) : (
+                        <><ChevronDown size={12} /> Show {p.model_votes.length} model votes</>
+                      )}
+                    </button>
                   )}
-                  <span>
-                    Margin: <span className="font-mono text-slate-300">{Math.abs(p.avg_margin).toFixed(1)} pts</span>
-                  </span>
-                </div>
 
-                {/* Elite badge */}
-                <div className="mt-2">
-                  <EliteBadge p={p} />
-                </div>
-
-                {/* Expand model breakdown */}
-                {p.model_votes.length > 0 && (
-                  <button
-                    onClick={() => setExpandedGame(expandedGame === p.game_id ? null : p.game_id)}
-                    className="mt-2 w-full flex items-center justify-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
-                  >
-                    {expandedGame === p.game_id ? (
-                      <><ChevronUp size={12} /> Hide model breakdown</>
-                    ) : (
-                      <><ChevronDown size={12} /> Show {p.model_votes.length} model votes</>
-                    )}
-                  </button>
-                )}
-
-                {expandedGame === p.game_id && (
-                  <ModelBreakdown
-                    votes={p.model_votes}
-                    homeTeam={p.home_team}
-                    awayTeam={p.away_team}
-                  />
-                )}
-              </Card>
-            ))}
+                  {expandedGame === p.game_id && (
+                    <ModelBreakdown votes={p.model_votes} homeTeam={p.home_team} awayTeam={p.away_team} />
+                  )}
+                </Card>
+              );
+            })}
           </div>
         </>
       )}
