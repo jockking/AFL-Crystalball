@@ -51,6 +51,58 @@ Press `Ctrl+C` to stop both.
 
 ---
 
+## Proxmox Deployment
+
+Deploys the app inside an Ubuntu 24.04 LXC container. nginx serves the React frontend and proxies `/api` to the FastAPI backend, which runs as a systemd service.
+
+### Fresh install
+
+Run on the **Proxmox host** as root:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/jockking/AFL-Crystalball/main/proxmox/ct/afl-crystalball.sh)
+```
+
+The script will:
+1. Download the Ubuntu 24.04 LXC template (once, ~130 MB)
+2. Create a container (2 vCPU · 1 GB RAM · 8 GB disk · DHCP)
+3. Install Node.js 20, Python 3, and nginx inside the container
+4. Clone this repo, build the React frontend, and start the backend as a systemd service (`afl-backend`)
+5. Print the app URL when done (~3–5 min)
+
+**Container defaults** — edit `proxmox/ct/afl-crystalball.sh` to change:
+
+| Setting | Default |
+|---|---|
+| Storage pool | `local-lvm` |
+| Bridge | `vmbr0` |
+| RAM | 1024 MB |
+| Disk | 8 GB |
+| Hostname | `afl-crystalball` |
+
+> Run `pvesm status` on the Proxmox host to confirm your storage pool name.
+
+### Update
+
+```bash
+# Interactive — prompts to update or reinstall
+bash <(curl -fsSL https://raw.githubusercontent.com/jockking/AFL-Crystalball/main/proxmox/ct/afl-crystalball.sh)
+
+# Non-interactive — git pull + rebuild, no prompts
+bash <(curl -fsSL https://raw.githubusercontent.com/jockking/AFL-Crystalball/main/proxmox/ct/afl-crystalball.sh) --update
+```
+
+### Useful container commands
+
+```bash
+pct list                                          # find the container ID
+pct enter <CTID>                                  # shell into container
+pct exec <CTID> -- journalctl -u afl-backend -f  # tail backend logs
+pct exec <CTID> -- systemctl restart afl-backend  # restart backend
+```
+
+---
+
 ## CLI Usage
 
 ```bash
