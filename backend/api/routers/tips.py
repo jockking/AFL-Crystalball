@@ -91,6 +91,23 @@ def get_predictions(
             "away_vote_pct":    _r(100 - p.home_vote_pct, 1),
             "is_close":         p.is_close_game,
             "is_complete":      p.game.is_complete,
+            # Elite consensus
+            "elite_confidence": p.elite_confidence,
+            "elite_winner":     p.elite_winner,
+            "elite_agrees":     p.elite_agrees,
+            # Per-model votes (sorted by weight desc, all models)
+            "model_votes": [
+                {
+                    "source_id":   v.source_id,
+                    "source_name": v.source_name,
+                    "tip":         v.tip,
+                    "margin":      v.margin,
+                    "confidence":  v.confidence,
+                    "weight":      v.weight,
+                    "is_elite":    v.is_elite,
+                }
+                for v in p.model_votes
+            ],
             # Actual result fields (None if game not played yet)
             "actual_winner":    actual_winner,
             "home_score":       actual.get("hscore") if actual else None,

@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, CURRENT_YEAR, type Prediction } from "../api";
+import { api, CURRENT_YEAR, type Prediction, type ModelVote } from "../api";
 import { Card, CardTitle } from "../components/Card";
 import ConfidenceBar from "../components/ConfidenceBar";
 import RoundSelector from "../components/RoundSelector";
 import Spinner from "../components/Spinner";
-import { CheckCircle, XCircle, Clock, BarChart2 } from "lucide-react";
+import { CheckCircle, XCircle, Clock, BarChart2, ChevronDown, ChevronUp } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 function ResultBadge({ p }: { p: Prediction }) {
@@ -42,8 +42,73 @@ function ScoreBadge({ p }: { p: Prediction }) {
   );
 }
 
+function EliteBadge({ p }: { p: Prediction }) {
+  if (p.elite_confidence == null || p.elite_winner == null) return null;
+  const agrees = p.elite_agrees !== false;
+  return (
+    <div className={`flex items-center gap-1.5 text-xs rounded px-2 py-0.5 border ${
+      agrees
+        ? "bg-amber-950/30 border-amber-800/50 text-amber-300"
+        : "bg-red-950/30 border-red-800/50 text-red-300"
+    }`}>
+      <span className="text-amber-400">★</span>
+      Elite: {p.elite_winner} ({p.elite_confidence.toFixed(0)}%)
+      {!agrees && <span className="text-red-400 ml-1">⚠ split</span>}
+    </div>
+  );
+}
+
+function ModelBreakdown({ votes, homeTeam, awayTeam }: { votes: ModelVote[]; homeTeam: string; awayTeam: string }) {
+  const eliteVotes = votes.filter((v) => v.is_elite);
+  const otherVotes = votes.filter((v) => !v.is_elite);
+
+  const renderVote = (v: ModelVote) => {
+    const pickedHome = v.tip === homeTeam;
+    return (
+      <div key={v.source_id ?? v.source_name} className="flex items-center gap-2 py-1 border-b border-slate-800/50 last:border-0">
+        <span className={`flex-1 text-xs truncate ${v.is_elite ? "text-amber-300 font-medium" : "text-slate-400"}`}>
+          {v.is_elite && <span className="text-amber-400 mr-1">★</span>}
+          {v.source_name ?? `Model ${v.source_id}`}
+        </span>
+        <span className={`text-xs font-semibold w-28 text-right ${pickedHome ? "text-sky-400" : "text-violet-400"}`}>
+          {v.tip ?? "—"}
+        </span>
+        {v.margin != null && (
+          <span className="text-xs text-slate-500 w-16 text-right font-mono">
+            {v.margin.toFixed(1)} pts
+          </span>
+        )}
+        <span className="text-xs text-slate-600 w-12 text-right font-mono">
+          {v.weight.toFixed(1)}%
+        </span>
+      </div>
+    );
+  };
+
+  return (
+    <div className="mt-3 pt-3 border-t border-slate-800">
+      {eliteVotes.length > 0 && (
+        <div className="mb-3">
+          <div className="text-xs text-amber-400 font-semibold mb-1">★ Elite Models</div>
+          {eliteVotes.map(renderVote)}
+        </div>
+      )}
+      {otherVotes.length > 0 && (
+        <div>
+          <div className="text-xs text-slate-500 font-semibold mb-1">All Other Models</div>
+          {otherVotes.map(renderVote)}
+        </div>
+      )}
+      <div className="text-xs text-slate-600 mt-2 text-right">
+        weight = % of total consensus influence
+      </div>
+    </div>
+  );
+}
+
 export default function Predictions() {
   const [round, setRound] = useState<number | null>(null);
+  const [expandedGame, setExpandedGame] = useState<number | null>(null);
 
   const { data: roundData } = useQuery({
     queryKey: ["current-round"],
@@ -233,6 +298,33 @@ export default function Predictions() {
                     Margin: <span className="font-mono text-slate-300">{Math.abs(p.avg_margin).toFixed(1)} pts</span>
                   </span>
                 </div>
+
+                {/* Elite badge */}
+                <div className="mt-2">
+                  <EliteBadge p={p} />
+                </div>
+
+                {/* Expand model breakdown */}
+                {p.model_votes.length > 0 && (
+                  <button
+                    onClick={() => setExpandedGame(expandedGame === p.game_id ? null : p.game_id)}
+                    className="mt-2 w-full flex items-center justify-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                  >
+                    {expandedGame === p.game_id ? (
+                      <><ChevronUp size={12} /> Hide model breakdown</>
+                    ) : (
+                      <><ChevronDown size={12} /> Show {p.model_votes.length} model votes</>
+                    )}
+                  </button>
+                )}
+
+                {expandedGame === p.game_id && (
+                  <ModelBreakdown
+                    votes={p.model_votes}
+                    homeTeam={p.home_team}
+                    awayTeam={p.away_team}
+                  />
+                )}
               </Card>
             ))}
           </div>

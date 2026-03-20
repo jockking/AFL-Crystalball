@@ -170,6 +170,17 @@ class Standing(BaseModel):
     model_config = {"populate_by_name": True, "extra": "allow"}
 
 
+class ModelVote(BaseModel):
+    """A single model's vote for a game."""
+    source_id: Optional[int] = None
+    source_name: Optional[str] = None
+    tip: Optional[str] = None          # Team predicted to win
+    margin: Optional[float] = None     # Predicted winning margin
+    confidence: Optional[float] = None # Model's own confidence (0–100)
+    weight: float = 0.0                # Normalised weight in the full consensus
+    is_elite: bool = False             # Whether this model is in the elite tier
+
+
 class GamePrediction(BaseModel):
     """
     Aggregated prediction for a single game.
@@ -178,15 +189,29 @@ class GamePrediction(BaseModel):
     game: Game
     predicted_winner: str
     predicted_loser: str
-    consensus_confidence: float        # 0–100
+    consensus_confidence: float        # 0–100, all models weighted
     avg_predicted_margin: float        # Positive = home team favoured
     model_count: int                   # How many models voted
     home_vote_pct: float               # % of models that picked home team
+
+    # Elite consensus (top models only)
+    elite_confidence: Optional[float] = None   # 0–100 from elite models only
+    elite_winner: Optional[str] = None         # May differ from full consensus
+
+    # Per-model breakdown sorted by weight descending
+    model_votes: list[ModelVote] = []
 
     @property
     def is_close_game(self) -> bool:
         """Flag games where models strongly disagree (confidence < 60%)."""
         return self.consensus_confidence < 60.0
+
+    @property
+    def elite_agrees(self) -> Optional[bool]:
+        """True if elite consensus agrees with full consensus winner."""
+        if self.elite_winner is None:
+            return None
+        return self.elite_winner == self.predicted_winner
 
 
 class ValueBet(BaseModel):

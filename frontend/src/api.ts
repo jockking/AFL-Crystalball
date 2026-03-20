@@ -27,6 +27,16 @@ export interface Game {
   complete: number;
 }
 
+export interface ModelVote {
+  source_id: number | null;
+  source_name: string | null;
+  tip: string | null;
+  margin: number | null;
+  confidence: number | null;
+  weight: number;       // percentage of total consensus weight (0–100)
+  is_elite: boolean;
+}
+
 export interface Prediction {
   game_id: number;
   date: string | null;
@@ -42,6 +52,13 @@ export interface Prediction {
   away_vote_pct: number;
   is_close: boolean;
   is_complete: boolean;
+  // Elite consensus (top 8 models ≥65% accuracy)
+  elite_confidence: number | null;
+  elite_winner: string | null;
+  elite_agrees: boolean | null;
+  // Per-model votes sorted by weight desc
+  model_votes: ModelVote[];
+  // Actual results
   actual_winner: string | null;
   home_score: number | null;
   away_score: number | null;
@@ -108,7 +125,12 @@ export interface Source {
   url: string | null;
   correct: number | null;
   incorrect: number | null;
+  total: number | null;
   accuracy: number | null;
+  bits: number | null;
+  tier: "Elite" | "Strong" | "Average" | "Poor" | "Unknown";
+  is_elite: boolean;
+  weight_pct: number;   // percentage of total consensus weight this model holds
 }
 
 // --- API calls ---
