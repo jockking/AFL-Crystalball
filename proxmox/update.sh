@@ -5,13 +5,16 @@
 # Pulls the latest code from GitHub and rebuilds the Docker containers.
 # Run this script ON THE PROXMOX HOST as root.
 #
-# Usage:
+# One-liner (run directly from GitHub):
+#   bash <(curl -fsSL https://raw.githubusercontent.com/jockking/AFL-Crystalball/main/proxmox/update.sh)
+#
+# Or clone first:
 #   sudo bash proxmox/update.sh
 # =============================================================================
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-STATE_FILE="$SCRIPT_DIR/.deploy-state"
+# Fixed path — matches deploy.sh, works whether run locally or via curl pipe
+STATE_FILE="/root/.afl-crystalball-state"
 
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; CYAN='\033[0;36m'; NC='\033[0m'
 info()  { echo -e "${GREEN}  ✓${NC}  $*"; }

@@ -5,7 +5,10 @@
 # Creates a Ubuntu 22.04 VM on your Proxmox host and deploys the app.
 # Run this script ON THE PROXMOX HOST as root.
 #
-# Usage:
+# One-liner (run directly from GitHub):
+#   bash <(curl -fsSL https://raw.githubusercontent.com/jockking/AFL-Crystalball/main/proxmox/deploy.sh)
+#
+# Or clone first:
 #   bash proxmox/deploy.sh
 #
 # Requirements:
@@ -41,8 +44,8 @@ CLOUD_IMAGE_CACHE="/var/lib/vz/template/iso/jammy-server-cloudimg-amd64.img"
 # SSH key used to talk to the VM (generated automatically if absent)
 SSH_KEY_PATH="$HOME/.ssh/afl_crystalball_deploy"
 
-# State file — stores VM ID and IP so update.sh can find them
-STATE_FILE="$(cd "$(dirname "$0")" && pwd)/.deploy-state"
+# State file — fixed path so the script works whether run locally or via curl pipe
+STATE_FILE="/root/.afl-crystalball-state"
 
 # =============================================================================
 # ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -346,7 +349,7 @@ echo -e "  ${CYAN}App URL:${NC}     http://${VM_IP}"
 echo -e "  ${CYAN}SSH:${NC}         ssh -i ${SSH_KEY_PATH} ${VM_USERNAME}@${VM_IP}"
 echo -e "  ${CYAN}VM ID:${NC}       $VM_ID  (Proxmox: qm status $VM_ID)"
 echo ""
-echo -e "  ${CYAN}To update:${NC}   sudo bash proxmox/update.sh"
+echo -e "  ${CYAN}To update:${NC}   bash <(curl -fsSL https://raw.githubusercontent.com/jockking/AFL-Crystalball/main/proxmox/update.sh)"
 echo -e "  ${CYAN}To stop:${NC}     qm stop $VM_ID"
 echo -e "  ${CYAN}To start:${NC}    qm start $VM_ID"
 echo ""
