@@ -41,7 +41,7 @@ if [[ $UPDATE_MODE -eq 1 ]]; then
   msg_info "Rebuilding frontend"
   cd "$APP_DIR/frontend"
   npm ci --silent
-  VITE_API_BASE=/api npm run build -- --silent
+  VITE_API_BASE=/api npm run build --silent
   msg_ok "Frontend rebuilt"
 
   msg_info "Restarting service"
@@ -95,7 +95,7 @@ msg_ok "Python environment ready"
 msg_info "Building frontend (this takes a minute)"
 cd "$APP_DIR/frontend"
 npm ci --silent
-VITE_API_BASE=/api npm run build -- --silent
+VITE_API_BASE=/api npm run build --silent
 msg_ok "Frontend built"
 
 # ── nginx ─────────────────────────────────────────────────────────────────────
