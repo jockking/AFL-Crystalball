@@ -69,6 +69,7 @@ msg_ok "System updated"
 msg_info "Installing dependencies"
 apt-get install -y -qq \
   curl git nginx python3 python3-pip python3-venv \
+  build-essential python3-dev \
   ca-certificates gnupg
 msg_ok "Dependencies installed"
 
@@ -87,8 +88,8 @@ msg_ok "Repository cloned"
 # ── Python virtualenv + backend deps ─────────────────────────────────────────
 msg_info "Setting up Python environment"
 python3 -m venv "$APP_DIR/venv"
-"$APP_DIR/venv/bin/pip" install --quiet --upgrade pip
-"$APP_DIR/venv/bin/pip" install --quiet -r "$APP_DIR/backend/requirements.txt"
+"$APP_DIR/venv/bin/pip" install --upgrade pip >/dev/null
+"$APP_DIR/venv/bin/pip" install -r "$APP_DIR/backend/requirements.txt"
 msg_ok "Python environment ready"
 
 # ── Build React frontend ───────────────────────────────────────────────────────
@@ -154,6 +155,18 @@ EOF
 systemctl daemon-reload
 systemctl enable --now "$SERVICE" >/dev/null 2>&1
 msg_ok "Service '${SERVICE}' started"
+
+# ── Console auto-login ────────────────────────────────────────────────────────
+msg_info "Configuring console auto-login"
+mkdir -p /etc/systemd/system/console-getty.service.d
+cat > /etc/systemd/system/console-getty.service.d/autologin.conf << 'EOF'
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin root --noclear --keep-baud console 115200,38400,9600 $TERM
+EOF
+systemctl daemon-reload
+systemctl restart console-getty 2>/dev/null || true
+msg_ok "Console auto-login enabled"
 
 # ── Verify ────────────────────────────────────────────────────────────────────
 msg_info "Waiting for backend to be ready"
