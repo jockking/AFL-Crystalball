@@ -152,6 +152,7 @@ export default function Predictions() {
 
   const predictions: Prediction[] = data?.predictions ?? [];
   const isPastRound = activeRound < currentRound;
+  const isFutureRound = activeRound > currentRound;
 
   // Summary stats for past rounds
   const completed = predictions.filter((p) => p.is_complete);
@@ -170,15 +171,24 @@ export default function Predictions() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-100">
-            {isPastRound ? "Round Results" : "Round Predictions"}
+            {isPastRound ? "Round Results" : isFutureRound ? "Future Round Forecast" : "Round Predictions"}
           </h1>
           <p className="text-slate-400 text-sm">
             {isPastRound
               ? "Model predictions vs actual results"
+              : isFutureRound
+              ? "Forward-looking consensus — models weighted by historical accuracy"
               : "Weighted consensus from 28+ models"}
           </p>
         </div>
-        <RoundSelector round={activeRound} maxRound={currentRound} onChange={setRound} />
+        <div className="flex items-center gap-2">
+          {isFutureRound && (
+            <span className="text-xs bg-blue-900/50 text-blue-300 border border-blue-700 px-2 py-0.5 rounded-full">
+              Forecasted
+            </span>
+          )}
+          <RoundSelector round={activeRound} maxRound={27} onChange={setRound} />
+        </div>
       </div>
 
       {/* Past round summary */}
