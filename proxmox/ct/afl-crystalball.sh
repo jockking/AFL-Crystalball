@@ -8,9 +8,16 @@
 #
 # On first run:  creates an LXC container and deploys the app.
 # On re-run:     detects the existing container and offers update / reinstall.
+#
+# Non-interactive update (git pull + rebuild, no prompts):
+#   bash <(curl -fsSL https://raw.githubusercontent.com/jockking/AFL-Crystalball/main/proxmox/ct/afl-crystalball.sh) --update
 # =============================================================================
 
 set -euo pipefail
+
+# ── Flags ─────────────────────────────────────────────────────────────────────
+NON_INTERACTIVE_UPDATE=0
+[[ "${1:-}" == "--update" ]] && NON_INTERACTIVE_UPDATE=1
 
 # ── App config ────────────────────────────────────────────────────────────────
 APP="AFL Crystalball"
@@ -69,6 +76,23 @@ pvesh get /storage/"$CT_STORAGE" --output-format json >/dev/null 2>&1 \
 EXISTING_CTID=$(pct list 2>/dev/null | awk -v name="$CT_HOSTNAME" '$3==name {print $1}' | head -1)
 
 if [[ -n "$EXISTING_CTID" ]]; then
+
+  # ── Non-interactive update (--update flag) ───────────────────────────────
+  if [[ $NON_INTERACTIVE_UPDATE -eq 1 ]]; then
+    msg_info "Updating container ${EXISTING_CTID} from GitHub"
+    pct exec "$EXISTING_CTID" -- bash -c \
+      "curl -fsSL ${INSTALL_SCRIPT} | bash -s -- --update" \
+      || msg_error "Update failed. Check: pct exec ${EXISTING_CTID} -- journalctl -u afl-backend"
+    CT_IP=$(pct exec "$EXISTING_CTID" -- hostname -I 2>/dev/null | awk '{print $1}')
+    echo ""
+    echo -e "${TAB}${GN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}"
+    echo -e "${TAB}${GN} Update complete!${CL}"
+    echo -e "${TAB}${GN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${CL}"
+    echo -e "${TAB}${CY}App URL:${CL}  http://${CT_IP}"
+    echo ""
+    exit 0
+  fi
+
   echo -e "${TAB}${YW}Container '${CT_HOSTNAME}' already exists (ID: ${EXISTING_CTID}).${CL}\n"
   echo -e "${TAB}  ${BOLD}1)${CL} Update app (git pull + rebuild)"
   echo -e "${TAB}  ${BOLD}2)${CL} Reinstall from scratch"
@@ -180,6 +204,11 @@ echo -e "${TAB}${DGN}Container:${CL} ${CTID} on ${CT_STORAGE}"
 echo -e "${TAB}${DGN}Resources:${CL} ${CT_CORES} vCPU, ${CT_RAM} MB RAM, ${CT_DISK} GB disk"
 echo -e "${TAB}${DGN}Network:${CL}   ${CT_IP} via ${CT_BRIDGE}"
 echo ""
+msg_info "Bootstrapping container"
+pct exec "$CTID" -- bash -c "apt-get update -qq && apt-get install -y -qq curl" \
+  || msg_error "Bootstrap failed. Check: pct enter ${CTID}"
+msg_ok "Container ready"
+
 msg_info "Installing AFL Crystalball (3-5 min first run)"
 echo ""
 
@@ -196,6 +225,6 @@ echo -e "${TAB}${CY}App URL:${CL}    http://${CT_IP}"
 echo -e "${TAB}${CY}Container:${CL}  pct enter ${CTID}"
 echo -e "${TAB}${CY}Logs:${CL}       pct exec ${CTID} -- journalctl -u afl-backend -f"
 echo ""
-echo -e "${TAB}To update later, just re-run this script:"
-echo -e "${TAB}${YW}bash <(curl -fsSL https://raw.githubusercontent.com/jockking/AFL-Crystalball/main/proxmox/ct/afl-crystalball.sh)${CL}"
+echo -e "${TAB}To update later, pull the latest code from GitHub:"
+echo -e "${TAB}${YW}bash <(curl -fsSL https://raw.githubusercontent.com/jockking/AFL-Crystalball/main/proxmox/ct/afl-crystalball.sh) --update${CL}"
 echo ""
