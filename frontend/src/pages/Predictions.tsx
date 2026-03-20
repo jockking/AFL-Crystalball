@@ -80,7 +80,7 @@ function BetPanel({ p }: { p: Prediction }) {
   );
 }
 
-function ModelBreakdown({ votes, homeTeam, awayTeam }: { votes: ModelVote[]; homeTeam: string; awayTeam: string }) {
+function ModelBreakdown({ votes, homeTeam }: { votes: ModelVote[]; homeTeam: string; awayTeam: string }) {
   const eliteVotes = votes.filter((v) => v.is_elite);
   const otherVotes = votes.filter((v) => !v.is_elite);
 

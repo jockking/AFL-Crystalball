@@ -207,9 +207,9 @@ export default function Models() {
                   <Tooltip
                     cursor={{ strokeDasharray: "3 3" }}
                     contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 8 }}
-                    formatter={(v: any, name: string) => [
+                    formatter={(v: any, name: string | undefined) => [
                       name === "Accuracy" ? `${Number(v).toFixed(1)}%` : Number(v).toFixed(3),
-                      name,
+                      name ?? "",
                     ]}
                     labelFormatter={(_: any, payload: any) => payload?.[0]?.payload?.name ?? ""}
                   />
