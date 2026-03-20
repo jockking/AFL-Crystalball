@@ -160,86 +160,62 @@ export default function Dashboard() {
                       key={p.game_id}
                       className="border-b border-slate-800 pb-4 last:border-0 last:pb-0"
                     >
-                      {/* Matchup row */}
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-slate-100">
-                              {p.home_team}{" "}
-                              <span className="text-slate-500 text-xs">vs</span>{" "}
-                              {p.away_team}
-                            </span>
-                            {/* Form badges for upcoming games */}
-                            {(isFutureRound || isCurrentRound) && homeForm && awayForm && (
-                              <FormBadgePair
-                                homeTeam={p.home_team}
-                                awayTeam={p.away_team}
-                                homeForm={homeForm}
-                                awayForm={awayForm}
-                              />
-                            )}
-                          </div>
+                      {/* Matchup line */}
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <span className="text-sm text-slate-300">
+                            {p.home_team}{" "}
+                            <span className="text-slate-600 text-xs">vs</span>{" "}
+                            {p.away_team}
+                          </span>
                           {p.venue && (
-                            <div className="text-xs text-slate-500 mt-0.5">
-                              {p.venue}
-                            </div>
+                            <div className="text-xs text-slate-600 mt-0.5">{p.venue}</div>
                           )}
                         </div>
-
-                        <div className="text-right ml-3 shrink-0">
-                          {p.is_complete && p.actual_winner ? (
-                            // Past game: show actual result
-                            <div>
-                              <div className="flex items-center justify-end gap-1">
-                                <span className="text-sm font-bold text-slate-100">
-                                  {p.actual_winner}
-                                </span>
-                                {p.tip_correct === true && (
-                                  <span className="text-green-400 text-xs">✓</span>
-                                )}
-                                {p.tip_correct === false && (
-                                  <span className="text-red-400 text-xs">✗</span>
-                                )}
-                              </div>
-                              {p.home_score != null && p.away_score != null && (
-                                <div className="text-xs text-slate-500">
-                                  {p.home_score} – {p.away_score}
-                                </div>
-                              )}
-                              <div className="text-xs text-slate-600 mt-0.5">
-                                pred: {p.predicted_winner}
-                              </div>
-                            </div>
-                          ) : (
-                            // Upcoming game: show model consensus
-                            <div>
-                              <span
-                                className={`text-sm font-bold ${
-                                  p.confidence >= 75
-                                    ? "text-green-400"
-                                    : p.confidence >= 60
-                                    ? "text-amber-400"
-                                    : "text-red-400"
-                                }`}
-                              >
-                                {p.predicted_winner}
-                              </span>
-                              <div className="text-xs text-slate-500">
-                                {p.confidence.toFixed(0)}% conf ·{" "}
-                                {p.model_count}m
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                        {(isFutureRound || isCurrentRound) && homeForm && awayForm && (
+                          <FormBadgePair
+                            homeTeam={p.home_team}
+                            awayTeam={p.away_team}
+                            homeForm={homeForm}
+                            awayForm={awayForm}
+                          />
+                        )}
                       </div>
 
-                      <ConfidenceBar
-                        homePct={p.home_vote_pct}
-                        homeTeam={p.home_team}
-                        awayTeam={p.away_team}
-                      />
+                      {p.is_complete && p.actual_winner ? (
+                        /* ── Past game: result view ── */
+                        <div className="flex items-center justify-between mt-2">
+                          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold ${
+                            p.tip_correct
+                              ? "bg-green-900/40 border border-green-700/50 text-green-300"
+                              : "bg-red-900/30 border border-red-800/50 text-red-300"
+                          }`}>
+                            {p.tip_correct ? "✓" : "✗"} {p.actual_winner}
+                            {p.home_score != null && p.away_score != null && (
+                              <span className="font-mono font-normal text-xs opacity-75 ml-1">
+                                {p.home_score}–{p.away_score}
+                              </span>
+                            )}
+                          </div>
+                          {!p.tip_correct && (
+                            <div className="text-xs text-slate-600">
+                              tipped <span className="text-slate-500">{p.predicted_winner}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        /* ── Upcoming game: BET recommendation ── */
+                        <BetRecommendation p={p} />
+                      )}
 
-                      {/* Historical performance context for future rounds */}
+                      <div className="mt-2">
+                        <ConfidenceBar
+                          homePct={p.home_vote_pct}
+                          homeTeam={p.home_team}
+                          awayTeam={p.away_team}
+                        />
+                      </div>
+
                       {isFutureRound && homeForm && awayForm && (
                         <FormContext homeForm={homeForm} awayForm={awayForm} />
                       )}
@@ -406,6 +382,58 @@ function Stat({
     <div className="text-center">
       <div className={`text-2xl font-bold ${color}`}>{value}</div>
       <div className="text-xs text-slate-500 mt-0.5">{label}</div>
+    </div>
+  );
+}
+
+function BetRecommendation({ p }: { p: import("../api").Prediction }) {
+  const conf = p.confidence;
+  const isStrong = conf >= 75;
+  const isModerate = conf >= 60;
+
+  const tierLabel = isStrong ? "Strong tip" : isModerate ? "Moderate" : "Tight game";
+  const containerCls = isStrong
+    ? "bg-green-900/40 border-green-600/60 text-green-200"
+    : isModerate
+    ? "bg-amber-900/30 border-amber-600/50 text-amber-200"
+    : "bg-slate-800/60 border-slate-600/50 text-slate-300";
+  const labelCls = isStrong
+    ? "text-green-400"
+    : isModerate
+    ? "text-amber-400"
+    : "text-slate-500";
+  const teamCls = isStrong
+    ? "text-green-100"
+    : isModerate
+    ? "text-amber-100"
+    : "text-slate-200";
+
+  const eliteSplit = p.elite_winner != null && p.elite_winner !== p.predicted_winner;
+
+  return (
+    <div className={`mt-2 flex items-center justify-between rounded-lg border px-3 py-2 ${containerCls}`}>
+      <div>
+        <div className={`text-xs font-semibold uppercase tracking-wider mb-0.5 ${labelCls}`}>
+          {tierLabel}
+        </div>
+        <div className={`text-base font-bold ${teamCls}`}>
+          {p.predicted_winner}
+        </div>
+      </div>
+      <div className="text-right">
+        <div className={`text-2xl font-bold tabular-nums ${labelCls}`}>
+          {conf.toFixed(0)}%
+        </div>
+        <div className="text-xs text-slate-500">
+          {Math.abs(p.avg_margin).toFixed(1)} pts · {p.model_count}m
+        </div>
+        {p.elite_winner && !eliteSplit && (
+          <div className="text-xs text-amber-400 mt-0.5">★ Elite agree</div>
+        )}
+        {eliteSplit && (
+          <div className="text-xs text-orange-400 mt-0.5">⚠ Elite: {p.elite_winner}</div>
+        )}
+      </div>
     </div>
   );
 }
