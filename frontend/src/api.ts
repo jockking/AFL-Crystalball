@@ -3,7 +3,9 @@
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "http://localhost:8000/api";
 
 async function get<T>(path: string, params?: Record<string, string | number>): Promise<T> {
-  const url = new URL(`${BASE}${path}`);
+  // Use window.location.origin as base so relative BASE paths (e.g. "/api") work in production.
+  // When BASE is an absolute URL (local dev), the base argument is ignored per the URL spec.
+  const url = new URL(`${BASE}${path}`, window.location.origin);
   if (params) {
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, String(v)));
   }

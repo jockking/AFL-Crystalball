@@ -174,6 +174,7 @@ pct create "$CTID" "local:vztmpl/${TEMPLATE}" \
   --swap        512 \
   --rootfs      "${CT_STORAGE}:${CT_DISK}" \
   --net0        "name=eth0,bridge=${CT_BRIDGE},ip=dhcp,firewall=0" \
+  --nameserver  "1.1.1.1 8.8.8.8" \
   --ostype      ubuntu \
   --unprivileged "$CT_UNPRIVILEGED" \
   --features    "nesting=1" \
